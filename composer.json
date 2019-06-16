@@ -1,0 +1,12 @@
+{
+    "name": "guozhaoran/counter",
+    "authors": [
+        {
+            "name": "guozhaoran",
+            "email": "guozhaoran@cmcm.com"
+        }
+    ],
+    "require": {
+        "predis/predis": "^1.1"
+    }
+}
