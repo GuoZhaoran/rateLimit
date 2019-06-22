@@ -33,19 +33,15 @@ class RateLimit
     {
         $luaScript = <<<LUA_SCRIPT
 -- 限制接口访问频次
-local times = redis.call('incr', KEYS[1]);    --将key自增1
-
+local times = redis.call('incr', KEYS[1])    --将key自增1
 if times == 1 then
-redis.call('expire', KEYS[1], ARGV[1])    --给key设置过期时间
+redis.call('expire', KEYS[1], tonumber(ARGV[1]))    --给key设置过期时间
 end
-
 if times > tonumber(ARGV[2]) then
 return 0
 end
-
 return 1
 LUA_SCRIPT;
-
         return $luaScript;
     }
 
@@ -67,12 +63,16 @@ LUA_SCRIPT;
      */
     public function isActionAllowed()
     {
-        $config = $this->conn->hgetall($this->org);
+        $pathInfoLimitKey = $this->org . '-' . $this->pathInfo;
+        $config = $this->conn->hgetall($pathInfoLimitKey);
         //配置中没有对接口进行限制
         if (!$config) return true;
-        $pathInfoLimitKey = $this->org . $this->pathInfo;
-        $ret = $this->conn->evalsha(sha1($this->getLuaScript()), 1,
-                $pathInfoLimitKey, $config['expire'], $config['limitReq']);
+
+        try {
+            $ret = $this->conn->evalsha(sha1($this->getLuaScript()), 1, $pathInfoLimitKey, $config['expire'], $config['limitReq']);
+        } catch (Exception $e) {
+            $ret = $this->conn->eval($this->getLuaScript(), 1, $pathInfoLimitKey, $config['expire'], $config['limitReq']);
+        }
 
         return boolval($ret);
     }
